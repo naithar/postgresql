@@ -4,7 +4,7 @@
     import CPostgreSQLMac
 #endif
 
-public enum Error: ErrorProtocol {
+public enum Error: Swift.Error {
     case cannotEstablishConnection
     case indexOutOfRange
     case columnNotFound
@@ -14,55 +14,56 @@ public enum Error: ErrorProtocol {
 }
 
 public class Database {
-    private let host: String 
+    private let host: String
     private let port: String
-    private let dbname: String 
-    private let user: String 
-    private let password: String 
+    private let dbname: String
+    private let user: String
+    private let password: String
 
     public init(host: String = "localhost", port: String = "5432", dbname: String, user: String, password: String) {
-        self.host = host 
-        self.port = port 
+        self.host = host
+        self.port = port
         self.dbname = dbname
-        self.user = user 
+        self.user = user
         self.password = password
     }
-    
+
     @discardableResult
     public func execute(_ query: String, _ values: [Value]? = [], on connection: Connection? = nil) throws -> [[String: Value]] {
-        let internalConnection: Connection 
+        let internalConnection: Connection
 
         if let conn = connection {
             internalConnection = conn
         } else {
             internalConnection = try makeConnection()
         }
-        
+
         guard !query.isEmpty else {
             throw Error.noQuery
         }
-        
+
         let res: Result.ResultPointer
-        if let values = values where values.count > 0 {
+        if let values = values,
+            values.count > 0 {
             let paramsValues = bind(values)
             res = PQexecParams(internalConnection.connection, query, Int32(values.count), nil, paramsValues, nil, nil, Int32(0))
-            
+
             defer {
                 paramsValues.deinitialize()
-                paramsValues.deallocateCapacity(values.count)
+                paramsValues.deallocate(capacity: values.count)
             }
         } else {
             res = PQexec(internalConnection.connection, query)
         }
-        
+
         defer { PQclear(res) }
         switch Status(result: res) {
         case .nonFatalError:
-            throw Error.invalidSQL(message: String(cString: PQresultErrorMessage(res)) ?? "")
+            throw Error.invalidSQL(message: String(cString: PQresultErrorMessage(res)))
         case .fatalError:
-            throw Error.invalidSQL(message: String(cString: PQresultErrorMessage(res)) ?? "")
+            throw Error.invalidSQL(message: String(cString: PQresultErrorMessage(res)))
         case .unknown:
-            throw Error.invalidSQL(message: String(cString: PQresultErrorMessage(res)) ?? "An unknown error has occurred")
+            throw Error.invalidSQL(message: String(cString: PQresultErrorMessage(res)))
         case .tuplesOk:
             return Result(resultPointer: res).dictionary
         default:
@@ -70,20 +71,20 @@ public class Database {
         }
         return []
     }
-    
+
     func bind(_ values: [Value]) -> UnsafeMutablePointer<UnsafePointer<Int8>?> {
-        let paramsValues = UnsafeMutablePointer<UnsafePointer<Int8>?>.init(allocatingCapacity: values.count)
-        
+        let paramsValues = UnsafeMutablePointer<UnsafePointer<Int8>?>.allocate(capacity: values.count)
+
         var v = [[UInt8]]()
         for i in 0..<values.count {
             var ch = [UInt8](values[i].utf8)
             ch.append(0)
             v.append(ch)
-            paramsValues[i] = UnsafePointer<Int8>(v.last!)
+            paramsValues[i] = UnsafePointer<Int8>(OpaquePointer(v.last!))
         }
         return paramsValues
     }
-    
+
     public func makeConnection() throws -> Connection {
         return try Connection(host: self.host, port: self.port, dbname: self.dbname, user: self.user, password: self.password)
     }
