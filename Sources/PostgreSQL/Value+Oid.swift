@@ -25,7 +25,7 @@ extension Value {
             self = .null
             return
         }
-        
+
         switch type {
         case .text, .varchar, .char:
             self = .string(value)
@@ -34,7 +34,7 @@ extension Value {
         case .float4, .float8, .numeric:
             self = .double(Double(value) ?? 0)
         case .bool:
-            self = .bool((value == "true") ? 1 : 0)
+            self = .bool(value == "true" || value == "t")
         case .unknown:
             self = .null
         }

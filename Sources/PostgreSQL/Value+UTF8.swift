@@ -19,7 +19,7 @@ extension Value {
         case .int(let int):
             return String(int).utf8
         case .bool(let bool):
-            return bool == 1 ? "true".utf8 : "false".utf8
+            return bool ? "true".utf8 : "false".utf8
         case .null:
             return "".utf8
         }

@@ -10,7 +10,7 @@ extension PostgreSQL.Database {
                 dbname: "test",
                 user: "pugwuh",
                 password: ""
-                
+
             )
             try postgreSQL.execute("SELECT version()")
             return postgreSQL
@@ -67,6 +67,6 @@ extension PostgreSQL.Value {
             return nil
         }
 
-        return Bool(bool)
+        return bool
     }
 }

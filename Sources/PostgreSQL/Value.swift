@@ -7,6 +7,6 @@ public enum Value {
     case string(String)
     case int(Int)
     case double(Double)
-    case bool(Int)
+    case bool(Bool)
     case null
 }
